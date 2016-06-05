@@ -1,0 +1,5 @@
+(import (scheme)
+        (on2 infmax ctvm graph)
+        (on2 infmax ctvm ssa))
+(define grqc (time (call-with-input-file "/home/emallson/Code/cikm16/datasets/snap/processed/ca-GrQc.txt" read-graph)))
+(define solution (ssa grqc 'ic 50 0.1 0.1))

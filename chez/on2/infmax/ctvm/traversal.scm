@@ -1,5 +1,5 @@
 (library (on2 infmax ctvm traversal (1))
-  (export dfs bfs)
+  (export dfs bfs any<)
   (import (scheme)
           (on2 infmax ctvm graph)
           (only (srfi :1 lists) lset-union)
