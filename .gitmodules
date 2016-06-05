@@ -1,0 +1,3 @@
+[submodule "chez/pfds"]
+	path = chez/pfds
+	url = git@github.com:ijp/pfds
