@@ -1,5 +1,5 @@
 (library (on2 infmax ctvm graph (1))
-  (export make-graph nodes out-edges in-edges cost benefit
+  (export graph? make-graph nodes out-edges in-edges cost graph-costs benefit graph-benefits
           map-edges filter-edges read-graph)
   (import (scheme)
           (only (srfi :1 lists) zip)
@@ -10,8 +10,8 @@
      (immutable nodes nodes)
      (immutable in-edges)
      (immutable out-edges)
-     (immutable costs)
-     (immutable benefits)))
+     (immutable costs graph-costs)
+     (immutable benefits graph-benefits)))
 
   (define (out-edges g v)
     "Looks up the out-edges of v on graph g."
@@ -47,7 +47,7 @@
   (define (read-graph-size port)
     "Reads the number of nodes and edges in the graph from the port."
     (let* ((num-nodes (read port))
-          (num-edges (read port)))
+           (num-edges (read port)))
       (values num-nodes num-edges)))
 
   (define (read-ctvm-node port)
