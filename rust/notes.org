@@ -1,0 +1,5 @@
+* Rust implementation of SSA
+
+  Turns out that the [[http://bluss.github.io/petgraph/doc/petgraph/index.html][petgraph]] library wasn't written with filtering
+  the BFS in mind. I'm going to have to implement my own BFS at least,
+  possibly my own Graph structure.

@@ -1,0 +1,12 @@
+* Chez Scheme Implementation
+
+  Pros:
+
+  - Love the syntax in general
+  - Reasonably performant
+
+  Cons:
+
+  - Chez doesn't have much support from the ecosystem.
+    + May want to check out Chicken b/c it very much does.
+  - Difficult to write a reasonable-to-read greedy loop. May just need to decompose more.

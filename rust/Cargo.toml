@@ -1,0 +1,7 @@
+[package]
+name = "ssa"
+version = "0.1.0"
+authors = ["J David Smith <emallson@atlanis.net>"]
+
+[dependencies]
+rand = "0.3"
