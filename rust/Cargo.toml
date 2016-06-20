@@ -4,5 +4,7 @@ version = "0.1.0"
 authors = ["J David Smith <emallson@atlanis.net>"]
 
 [dependencies]
-petgraph = "0.2.7"
 rand = "0.3"
+
+[dev-dependencies]
+quickcheck = "0.2"
