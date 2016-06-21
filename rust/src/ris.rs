@@ -1,27 +1,34 @@
-use graph::{Graphlike, Node, Edge};
+use graph::{Graphlike, Node, Edge, Weight};
 use std::collections::VecDeque;
+use std::collections::HashSet;
 
-pub struct ReverseBFS<'a, F: 'a>
+extern crate rand;
+use rand::distributions::{IndependentSample, Range};
+
+pub struct ReverseBFS<'a, F>
+    where F: for<'r> Fn(&'r Edge) -> bool + 'static
 {
     queue: VecDeque<&'a Node>,
     graph: &'a Graphlike,
-    activator: &'a F,
+    visited: HashSet<&'a Node>,
+    activator: F,
 }
 
-impl<'a, F> ReverseBFS<'a, F> {
-    pub fn new(graph: &'a Graphlike, start: &'a Node, activator: &'a F) -> ReverseBFS<'a, F>
-        where for<'r> F: Fn(&'r Edge) -> bool
+impl<'a, F> ReverseBFS<'a, F>
+    where F: for<'r> Fn(&'r Edge) -> bool
+{
+    pub fn new(graph: &'a Graphlike, start: &'a Node, activator: F) -> Self
     {
         let mut q = VecDeque::new();
         q.push_back(start);
 
-        ReverseBFS { queue: q, graph: graph, activator: activator }
+        ReverseBFS { queue: q, graph: graph, visited: HashSet::new(), activator: activator }
     }
 
 }
 
 impl<'a, F> Iterator for ReverseBFS<'a, F>
-    where for<'r> F: Fn(&'r &Edge) -> bool
+    where F: for<'r> Fn(&'r Edge) -> bool
 {
     type Item = &'a Node;
 
@@ -29,13 +36,84 @@ impl<'a, F> Iterator for ReverseBFS<'a, F>
         let next_node = self.queue.pop_front();
 
         if let Some(node) = next_node {
+            self.visited.insert(node);
             if let Some(neighbors) = self.graph.in_neighbors(node) {
-                for &Edge {ref from, ..} in neighbors.iter().filter(self.activator) {
-                    self.queue.push_back(from);
-                }
+                // for &Edge {ref from, ..} in neighbors.iter().filter(&self.activator) {
+                //     self.queue.push_back(from);
+                // }
+                let f = &self.activator;
+                let visited = &self.visited;
+                self.queue.append(&mut neighbors.iter().filter_map(| edge: &'a Edge | {
+                    if !visited.contains(&edge.from) && f(&edge) {
+                        Some(&edge.from)
+                    } else { None }
+                }).collect::<VecDeque<&'a Node>>())
             }
         }
 
         next_node
+    }
+}
+
+pub fn sample_ic<'a>(graph: &'a Graphlike, start: &'a Node) -> HashSet<&'a Node> {
+    let uniform = Range::new(0, 1);
+
+    ReverseBFS::new(graph, start, move |&Edge { ref weight, .. }| {
+        let mut rng = rand::thread_rng();
+        let Weight(w) = *weight;
+        uniform.ind_sample(&mut rng) as f32 <= w
+    }).collect::<HashSet<&Node>>()
+}
+
+#[cfg(test)]
+extern crate quickcheck;
+#[cfg(test)]
+mod test {
+    use super::quickcheck::{quickcheck};
+    use std::collections::HashSet;
+    use std::collections::VecDeque;
+    use graph::{CTVMGraph, Graphlike, Node};
+    use rand;
+    use super::*;
+
+    #[test]
+    fn bfs_connected() {
+        fn reverse_connected(graph: CTVMGraph) -> bool {
+            if graph.count_nodes() == 0 {
+                return true;
+            }
+
+            let mut rng = rand::thread_rng();
+            let start = rand::sample(&mut rng, graph.nodes(), 1)[0];
+
+            let result = ReverseBFS::new(&graph, &start, |_| true).take(10).collect::<HashSet<&Node>>();
+            let mut connected = HashSet::new();
+            let mut q = VecDeque::new();
+            q.push_back(start);
+
+            // basically re-implemented reverse BFS inline here.
+            // Perhaps poor style, but I know not another way to check
+            // the results. Maybe start solution-first?
+            //
+            // regardless, this checks that the iterator version works
+            // correctly, since the while-loop version is more
+            // conventional and easier to inspect
+            while !q.is_empty() {
+                let node = q.pop_front().unwrap();
+                if connected.contains(node) {
+                    continue;
+                }
+                connected.insert(node);
+                for other in result.iter().cloned() {
+                    if graph.edge_weights(other, node).is_some() {
+                        q.push_back(other);
+                    }
+                }
+            }
+
+            connected == result
+        }
+
+        quickcheck(reverse_connected as fn(CTVMGraph) -> bool);
     }
 }

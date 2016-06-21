@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
-pub struct Node(u64);
+pub struct Node(pub u64);
 
 #[cfg(test)]
 impl Arbitrary for Node {
@@ -16,8 +16,8 @@ impl Arbitrary for Node {
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct Weight(f32);
+#[derive(PartialEq, PartialOrd, Clone, Debug)]
+pub struct Weight(pub f32);
 
 #[cfg(test)]
 impl Arbitrary for Weight {
@@ -81,7 +81,7 @@ pub trait Graphlike {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct Cost(f32);
+pub struct Cost(pub f32);
 
 #[cfg(test)]
 impl Arbitrary for Cost {
@@ -91,7 +91,7 @@ impl Arbitrary for Cost {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct Benefit(f32);
+pub struct Benefit(pub f32);
 
 #[cfg(test)]
 impl Arbitrary for Benefit {
@@ -203,7 +203,7 @@ impl Graphlike for CTVMGraph {
 
 impl CTVMGraph {
 
-    fn new() -> CTVMGraph {
+    pub fn new() -> CTVMGraph {
         return CTVMGraph {
             nodes: HashSet::new(),
             edges: HashMap::new(),
@@ -214,17 +214,17 @@ impl CTVMGraph {
         }
     }
 
-    fn add_weighted_node(&mut self, node: Node, cost: Cost, benefit: Benefit) {
+    pub fn add_weighted_node(&mut self, node: Node, cost: Cost, benefit: Benefit) {
         self.add_node(node.clone());
         self.costs.insert(node.clone(), cost);
         self.benefits.insert(node.clone(), benefit);
     }
 
-    fn get_cost(&self, node: &Node) -> Option<&Cost> {
+    pub fn get_cost(&self, node: &Node) -> Option<&Cost> {
         self.costs.get(node)
     }
 
-    fn get_benefit(&self, node: &Node) -> Option<&Benefit> {
+    pub fn get_benefit(&self, node: &Node) -> Option<&Benefit> {
         self.benefits.get(node)
     }
 }
