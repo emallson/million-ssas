@@ -1,6 +1,6 @@
 use graph::{Graphlike, Node, Edge, Weight};
 use std::collections::VecDeque;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 extern crate rand;
 use rand::distributions::{IndependentSample, Range};
@@ -10,7 +10,7 @@ pub struct ReverseBFS<'a, F>
 {
     queue: VecDeque<&'a Node>,
     graph: &'a Graphlike,
-    visited: HashSet<&'a Node>,
+    visited: Vec<bool>,
     activator: F,
 }
 
@@ -22,7 +22,7 @@ impl<'a, F> ReverseBFS<'a, F>
         let mut q = VecDeque::new();
         q.push_back(start);
 
-        ReverseBFS { queue: q, graph: graph, visited: HashSet::new(), activator: activator }
+        ReverseBFS { queue: q, graph: graph, visited: vec![false; graph.count_nodes()], activator: activator }
     }
 
 }
@@ -36,7 +36,7 @@ impl<'a, F> Iterator for ReverseBFS<'a, F>
         let next_node = self.queue.pop_front();
 
         if let Some(node) = next_node {
-            self.visited.insert(node);
+            self.visited[node.0 as usize] = true;
             if let Some(neighbors) = self.graph.in_neighbors(node) {
                 // for &Edge {ref from, ..} in neighbors.iter().filter(&self.activator) {
                 //     self.queue.push_back(from);
@@ -44,7 +44,7 @@ impl<'a, F> Iterator for ReverseBFS<'a, F>
                 let f = &self.activator;
                 let visited = &self.visited;
                 self.queue.append(&mut neighbors.iter().filter_map(| edge: &'a Edge | {
-                    if !visited.contains(&edge.from) && f(&edge) {
+                    if !visited[edge.from.0 as usize] && f(&edge) {
                         Some(&edge.from)
                     } else { None }
                 }).collect::<VecDeque<&'a Node>>())
@@ -55,14 +55,14 @@ impl<'a, F> Iterator for ReverseBFS<'a, F>
     }
 }
 
-pub fn sample_ic<'a>(graph: &'a Graphlike, start: &'a Node) -> HashSet<&'a Node> {
-    let uniform = Range::new(0, 1);
+pub fn sample_ic<'a>(graph: &'a Graphlike, start: &'a Node) -> BTreeSet<&'a Node> {
+    let uniform = Range::new(0f32, 1f32);
 
     ReverseBFS::new(graph, start, move |&Edge { ref weight, .. }| {
         let mut rng = rand::thread_rng();
         let Weight(w) = *weight;
-        uniform.ind_sample(&mut rng) as f32 <= w
-    }).collect::<HashSet<&Node>>()
+        uniform.ind_sample(&mut rng) <= w
+    }).collect::<BTreeSet<&Node>>()
 }
 
 #[cfg(test)]
@@ -70,7 +70,7 @@ extern crate quickcheck;
 #[cfg(test)]
 mod test {
     use super::quickcheck::{quickcheck};
-    use std::collections::HashSet;
+    use std::collections::BTreeSet;
     use std::collections::VecDeque;
     use graph::{CTVMGraph, Graphlike, Node};
     use rand;
@@ -86,8 +86,8 @@ mod test {
             let mut rng = rand::thread_rng();
             let start = rand::sample(&mut rng, graph.nodes(), 1)[0];
 
-            let result = ReverseBFS::new(&graph, &start, |_| true).take(10).collect::<HashSet<&Node>>();
-            let mut connected = HashSet::new();
+            let result = ReverseBFS::new(&graph, &start, |_| true).take(10).collect::<BTreeSet<&Node>>();
+            let mut connected = BTreeSet::new();
             let mut q = VecDeque::new();
             q.push_back(start);
 

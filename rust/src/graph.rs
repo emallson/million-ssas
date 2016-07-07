@@ -3,10 +3,12 @@ extern crate quickcheck;
 #[cfg(test)]
 use self::quickcheck::{Arbitrary, Gen};
 
+use std::ops::Add;
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 pub struct Node(pub u64);
 
 #[cfg(test)]
@@ -80,8 +82,17 @@ pub trait Graphlike {
     fn edge_weights(&self, from: &Node, to: &Node) -> Option<Vec<&Weight>>;
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Copy)]
 pub struct Cost(pub f32);
+
+impl Add for Cost {
+    type Output = Self;
+
+    fn add(self, Cost(rhs): Self) -> Self::Output {
+        let Cost(lhs) = self;
+        Cost(lhs + rhs)
+    }
+}
 
 #[cfg(test)]
 impl Arbitrary for Cost {
@@ -97,6 +108,91 @@ pub struct Benefit(pub f32);
 impl Arbitrary for Benefit {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Benefit(f32::arbitrary(g))
+    }
+}
+
+/// A graph implementation that makes *strong* assumptions about the
+/// input in order to avoid using HashMaps/HashSets.
+///
+/// We assume:
+/// 1. The node ids are a range 0..n-1.
+/// 2. Every edge refers only to the existing nodes.
+#[derive(PartialEq, Clone, Debug)]
+pub struct SequentialGraph {
+    nodes: HashSet<Node>,
+    edges: Vec<Vec<Edge>>,
+    in_edges: Vec<Vec<Edge>>,
+    num_edges: usize,
+    costs: Vec<Cost>,
+    benefits: Vec<Benefit>,
+}
+
+impl SequentialGraph {
+    pub fn new(nodes: &usize, edges: &usize) -> Self {
+        return SequentialGraph {
+            nodes: HashSet::new(),
+            edges: vec![Vec::new(); *nodes],
+            in_edges: vec![Vec::new(); *nodes],
+            num_edges: 0,
+            costs: vec![Cost(0f32); *nodes],
+            benefits: vec![Benefit(0f32); *nodes]
+        }
+    }
+
+    pub fn add_weighted_node(&mut self, node: Node, cost: Cost, benefit: Benefit) {
+        let id = node.0 as usize;
+        self.add_node(node);
+        self.costs[id] = cost;
+        self.benefits[id] = benefit;
+    }
+
+    pub fn get_cost(&self, node: &Node) -> Option<&Cost> {
+        Some(&self.costs[node.0 as usize])
+    }
+
+    pub fn get_benefit(&self, node: &Node) -> Option<&Benefit> {
+        Some(&self.benefits[node.0 as usize])
+    }
+}
+
+impl Graphlike for SequentialGraph {
+    fn count_nodes(&self) -> usize {
+        self.nodes.len()
+    }
+
+    fn count_edges(&self) -> usize {
+        self.num_edges
+    }
+
+    fn nodes(&self) -> &HashSet<Node> {
+        &self.nodes
+    }
+
+    fn add_node(&mut self, node: Node) {
+        self.nodes.insert(node);
+    }
+
+    fn add_edge(&mut self, edge: Edge) {
+        self.edges[edge.from.0 as usize].push(edge.clone());
+        self.in_edges[edge.to.0 as usize].push(edge);
+        self.num_edges += 1;
+    }
+
+    fn del_edge(&mut self, from: Node, to: Node) -> bool {
+        assert!(false);
+        false
+    }
+
+    fn neighbors(&self, node: &Node) -> Option<&Vec<Edge>> {
+        Some(&self.edges[node.0 as usize])
+    }
+
+    fn in_neighbors(&self, node: &Node) -> Option<&Vec<Edge>> {
+        Some(&self.in_edges[node.0 as usize])
+    }
+
+    fn edge_weights(&self, from: &Node, to: &Node) -> Option<Vec<&Weight>> {
+        Some(self.edges[from.0 as usize].iter().filter_map(| &Edge { to: ref node, ref weight, ..} | if node == to { Some(weight) } else { None }).collect())
     }
 }
 
